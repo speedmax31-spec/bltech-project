@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>구매관리 플랫폼</title>
+<link rel="stylesheet" href="style.css?v=20260911b">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+<!-- 로그인 게이트 (구글 계정) -->
+<div id="login-screen" class="login-screen">
+  <div class="login-card">
+    <img src="logo.png" alt="BL tech" style="height:52px;background:#fff;border-radius:12px;padding:6px 10px;margin:0 auto 14px;display:block">
+    <h1>구매관리 플랫폼</h1>
+    <p class="muted" style="margin-bottom:18px">BL-TECH 구매팀 — 구글 계정으로 로그인해 주세요.</p>
+    <button type="button" class="btn primary" id="google-login" style="width:100%;padding:12px;font-size:15px">
+      <b>G</b>&nbsp; 구글 계정으로 로그인
+    </button>
+    <div id="login-error" class="login-error"></div>
+  </div>
+</div>
+
+<aside class="sidebar">
+  <div class="logo">
+    <img class="logo-img" src="logo.png" alt="BL tech">
+    <div>
+      <div class="logo-title">구매관리 플랫폼</div>
+      <div class="logo-sub">BL-TECH 구매팀</div>
+    </div>
+  </div>
+  <nav>
+    <button class="nav-btn home-btn active" data-page="home">🏠 종합 현황</button>
+    <div class="nav-cat" data-cat="prod">🏭 생산 <span class="nav-arrow">⌄</span></div>
+    <div class="nav-sub" data-sub="prod">
+      <button class="nav-btn" data-page="check">생산 가능 체크</button>
+      <button class="nav-btn" data-page="bom">BOM · 자재명세서</button>
+    </div>
+    <div class="nav-cat" data-cat="buy">🛒 구매 <span class="nav-arrow">⌄</span></div>
+    <div class="nav-sub" data-sub="buy">
+      <button class="nav-btn" data-page="alert">발주 알림</button>
+      <button class="nav-btn" data-page="po">발주서 작성</button>
+      <button class="nav-btn" data-page="orders">발주내역</button>
+      <button class="nav-btn" data-page="receive">자재 발주·입고</button>
+      <button class="nav-btn" data-page="inquiry">입고 조회</button>
+    </div>
+    <div class="nav-cat" data-cat="mat">📦 자재 <span class="nav-arrow">⌄</span></div>
+    <div class="nav-sub" data-sub="mat">
+      <button class="nav-btn" data-page="materials">원부자재 재고 현황</button>
+      <button class="nav-btn" data-page="finished">완제품 재고 현황</button>
+      <button class="nav-btn" data-page="issue">자재 일일출고</button>
+      <button class="nav-btn" data-page="issuelist">출고 조회</button>
+    </div>
+    <div class="nav-cat" data-cat="etc">📊 기준 · 분석 <span class="nav-arrow">⌄</span></div>
+    <div class="nav-sub" data-sub="etc">
+      <button class="nav-btn" data-page="codes">품목 코드</button>
+      <button class="nav-btn" data-page="analytics">분석</button>
+      <button class="nav-btn" data-page="rmissues">원부자재 이슈</button>
+      <button class="nav-btn" data-page="cost">제조원가</button>
+    </div>
+  </nav>
+  <div class="sidebar-foot">
+    <span id="login-user"></span> <a href="#" id="logout-btn" style="color:#8fa0c0;display:none">로그아웃</a><br>
+    BL-TECH 구매팀<br><span id="sync-status" class="sync-status">☁️ 클라우드 확인 중…</span>
+  </div>
+</aside>
+
+<main class="main">
+  <!-- 열린 화면 탭 바 (ERP 방식) -->
+  <div class="ptab-bar" id="tab-bar" hidden></div>
+
+  <!-- 홈 (카드 허브) -->
+  <section id="page-home" class="page">
+    <div class="hub">
+      <div class="hub-head">
+        <h1>🛒 BL-TECH 구매관리</h1>
+        <p class="muted">구매물류 종합 현황 — <span class="today-label"></span></p>
+        <div id="fx-bar" class="fx-bar"></div>
+      </div>
+      <div id="home-brief"></div>
+      <div class="hub-group-label">구매팀</div>
+      <div class="hub-cards">
+        <div class="hub-card" data-goto="materials"><div class="hub-ico">🧱</div><h3>원부자재 재고 현황</h3><p>원자재·부자재 현재고, 안전재고 대비 과부족 확인.</p><span class="hub-open">열기 →</span></div>
+        <div class="hub-card" data-goto="finished"><div class="hub-ico">📦</div><h3>완제품 재고 현황</h3><p>내수·수출 완제품 재고, 부족 SKU 확인.</p><span class="hub-open">열기 →</span></div>
+        <div class="hub-card" data-goto="orders"><div class="hub-ico">🧾</div><h3>발주내역</h3><p>발주 기록 관리, 납기·입고 추적.</p><span class="hub-open">열기 →</span></div>
+        <div class="hub-card" data-goto="receive"><div class="hub-ico">📥</div><h3>자재 발주·입고</h3><p>ERP 발주입력 방식 시트 — 입고 시 재고 자동 반영.</p><span class="hub-open">열기 →</span></div>
+        <div class="hub-card" data-goto="inquiry"><div class="hub-ico">📋</div><h3>입고 조회</h3><p>기간·거래처·품명별 입고 내역 조회, 수량·금액 합계.</p><span class="hub-open">열기 →</span></div>
+        <div class="hub-card" data-goto="issue"><div class="hub-ico">📤</div><h3>자재 일일출고</h3><p>생산투입 자재 출고 입력 — 재고 차감 반영.</p><span class="hub-open">열기 →</span></div>
+        <div class="hub-card" data-goto="issuelist"><div class="hub-ico">📑</div><h3>출고 조회</h3><p>출고 전표 목록 — 클릭하면 출고 품목 내역 확인.</p><span class="hub-open">열기 →</span></div>
+        <div class="hub-card" data-goto="bom"><div class="hub-ico">📚</div><h3>BOM · 자재명세서</h3><p>내수·해외·반제품 BOM, 계층 구조와 소요 자재 전개.</p><span class="hub-open">열기 →</span></div>
+        <div class="hub-card" data-goto="codes"><div class="hub-ico">🔖</div><h3>품목 코드</h3><p>원자재·부자재·반제품·완제품 코드 조회, 엑셀 등록.</p><span class="hub-open">열기 →</span></div>
+        <div class="hub-card" data-goto="check"><div class="hub-ico">🏭</div><h3>생산 가능 체크</h3><p>제품·수량 입력 → BOM 전개 × 원부자재 재고 대조.</p><span class="hub-open">열기 →</span></div>
+        <div class="hub-card" data-goto="alert"><div class="hub-ico">🚨</div><h3>발주 알림</h3><p>평균 입고·사용량 × 현재고 — 긴급 발주 품목 실시간 감지.</p><span class="hub-open">열기 →</span></div>
+        <div class="hub-card" data-goto="analytics"><div class="hub-ico">📊</div><h3>분석</h3><p>발주·자재·재고·출고 현황을 차트로 한눈에.</p><span class="hub-open">열기 →</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 원부자재 재고 현황 -->
+  <section id="page-materials" class="page" hidden>
+    <div class="page-head">
+      <h1>원부자재 재고 현황 <span class="muted" style="font-size:13px;font-weight:400"><span id="mat-month"></span> · <span class="today-label"></span> <span id="mat-updated"></span></span></h1>
+      <div class="head-actions">
+        <div class="sub-toggle" id="mat-div-toggle"><button data-div="부목" class="active">부목</button><button data-div="하이드로겔">하이드로겔</button></div>
+        <button class="btn" id="btn-xlsx-mat">📄 엑셀로 재고 갱신</button>
+        <button class="btn" id="btn-csv-materials">⬇ CSV 내보내기</button>
+        <button class="btn primary" id="btn-new-material">＋ 자재 등록</button>
+      </div>
+    </div>
+    <div class="kpi-grid" id="mat-kpi"></div>
+    <div class="card filter-bar">
+      <span class="muted" style="font-size:13px">대분류</span>
+      <span id="m-cats"></span>
+      <label>검색 <input type="text" id="m-search" placeholder="품목명, 신규이름, 신규코드..."></label>
+      <button class="btn" id="m-reset">초기화</button>
+    </div>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px">당월 재고·단가 칸은 표에서 바로 고칠 수 있고(금액 자동 재계산), 그 외 항목은 행을 누르면 수정 창이 열립니다. 재고 엑셀 파일("NN년 NN월재고" 시트)을 이 화면에 끌어다 놓으면 가장 최신 월 기준으로 반영됩니다.
+      <b>적정재고</b> = 최근 6개월 발주·입고 내역의 월평균 입고량 × 1.5 — 당월 재고가 적정재고보다 적으면 <b style="color:var(--danger)">빨간색</b>으로 표시됩니다 (입고 이력이 없는 품목은 —).</p>
+      <div class="table-wrap" id="materials-table"></div>
+    </div>
+  </section>
+
+  <!-- 완제품 재고 현황 -->
+  <section id="page-finished" class="page" hidden>
+    <div class="page-head">
+      <h1>완제품 재고 현황 <span class="muted" style="font-size:13px;font-weight:400"><span class="today-label"></span> <span id="fin-updated"></span></span></h1>
+      <div class="head-actions">
+        <div class="sub-toggle" id="fin-toggle"><button data-fin="dom" class="active">내수 재고</button><button data-fin="exp">수출 재고</button></div>
+        <button class="btn" id="btn-xlsx-fin">📄 엑셀로 재고 갱신</button>
+        <button class="btn" id="btn-csv-finished">⬇ CSV 내보내기</button>
+        <button class="btn primary" id="btn-new-fin">＋ 재고 등록</button>
+      </div>
+    </div>
+    <div class="kpi-grid" id="fin-kpi"></div>
+    <div class="card filter-bar" id="fin-dom-filter">
+      <span class="muted" style="font-size:13px">제품군</span>
+      <span id="fd-groups">
+        <button class="chip active" data-g="">전체</button><button class="chip" data-g="Cast">Cast</button><button class="chip" data-g="Pre-Cut">Pre-Cut</button><button class="chip" data-g="Splint">Splint</button><button class="chip" data-g="Pre-Mold">Pre-Mold</button><button class="chip" data-g="NEAL COVER">NEAL COVER</button><button class="chip" data-g="Under-Pad">Under-Pad</button>
+      </span>
+      <label>검색 <input type="text" id="fd-search" placeholder="제품코드, 브랜드..."></label>
+      <label><input type="checkbox" id="fd-short" style="width:auto"> 부족만 보기</label>
+      <button class="btn" id="fd-reset">초기화</button>
+    </div>
+    <div class="card filter-bar" id="fin-exp-filter" hidden>
+      <label>해외거래처 <select id="fe-sup"><option value="">전체</option></select></label>
+      <label>검색 <input type="text" id="fe-search" placeholder="제품코드..."></label>
+      <button class="btn" id="fe-reset">초기화</button>
+    </div>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px" id="fin-note">수량 칸은 표에서 바로 고칠 수 있고, 그 외 항목은 행을 누르면 수정 창이 열립니다. 엑셀 파일('내수 재고현황'/'해외 재고현황' 시트)을 이 화면에 끌어다 놓아도 반영됩니다.</p>
+      <div class="table-wrap" id="finished-table"></div>
+    </div>
+  </section>
+
+  <!-- 발주내역 -->
+  <section id="page-orders" class="page" hidden>
+    <div class="page-head">
+      <h1>발주내역 <span class="muted" style="font-size:13px;font-weight:400">발주 기록 관리 · 입고 추적 · <span class="today-label"></span> <span id="ord-updated"></span></span></h1>
+      <div class="head-actions">
+        <button class="btn" id="btn-xlsx-ord">📄 엑셀로 갱신</button>
+        <button class="btn" id="btn-csv-orders">⬇ CSV 내보내기</button>
+        <button class="btn primary" id="btn-new-order">＋ 발주 등록</button>
+      </div>
+    </div>
+    <div class="kpi-grid" id="ord-kpi"></div>
+    <div class="card filter-bar">
+      <label>기간 <input type="date" id="o-from"> ~ <input type="date" id="o-to"></label>
+      <label>거래처 <select id="o-sup"><option value="">전체</option></select></label>
+      <label>입고상태 <select id="o-state"><option value="">전체</option><option>미입고</option><option>부분입고</option><option>입고완료</option></select></label>
+      <label>검색 <input type="text" id="o-search" placeholder="품명, 비고..."></label>
+      <button class="btn" id="o-reset">초기화</button>
+    </div>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px">금액을 비우면 수량 × 단가로 자동 계산됩니다. 행을 누르면 수정할 수 있고, 발주내역 엑셀(발주일자/거래처/품명 헤더)을 이 화면에 끌어다 놓아도 반영됩니다.</p>
+      <div class="table-wrap" id="orders-table"></div>
+    </div>
+  </section>
+
+  <!-- 자재 발주·입고 (ERP 구매발주입력 방식) -->
+  <section id="page-receive" class="page" hidden>
+    <div class="page-head">
+      <h1>자재 발주·입고 <span class="muted" style="font-size:13px;font-weight:400"><span class="today-label"></span></span></h1>
+      <div class="head-actions">
+        <button class="btn" id="rc-xlsx-in">📄 엑셀로 불러오기</button>
+        <button class="btn" id="rc-xlsx-out">⬇ 엑셀 다운로드</button>
+        <button class="btn" id="rc-addrow">＋ 행 추가</button>
+        <button class="btn primary" id="rc-order">📝 발주 등록</button>
+        <button class="btn primary" id="rc-receive">📥 발주 + 즉시 입고</button>
+      </div>
+    </div>
+    <div class="card filter-bar">
+      <label>발주일 <input type="date" id="rc-date"></label>
+      <label>구매거래처 <input type="text" id="rc-supplier" list="dl-rc-sup" placeholder="거래처명"></label>
+      <label>발주담당자 <input type="text" id="rc-manager" value="차훈" style="width:90px"></label>
+      <label>특이사항 <input type="text" id="rc-note" style="min-width:220px"></label>
+      <datalist id="dl-rc-sup"></datalist>
+    </div>
+    <div class="kpi-grid" id="rc-totals"></div>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px">품번 칸에 신규코드나 품목명을 입력하면 품명·단위·현재고·단가(당월 단가)가 자동으로 채워집니다. 부가세는 10% 기준입니다. [발주 등록]은 발주내역에 미입고로 기록되고, [발주 + 즉시 입고]는 발주내역에 입고완료로 기록되면서 <b>원부자재 현재고가 바로 늘어납니다</b>.</p>
+      <div class="table-wrap" id="recv-table"></div>
+      <datalist id="dl-rc-mat"></datalist>
+    </div>
+  </section>
+
+  <!-- 입고 조회 -->
+  <section id="page-inquiry" class="page" hidden>
+    <div class="page-head">
+      <h1>입고 조회 <span class="muted" style="font-size:13px;font-weight:400">구매입고 품목 조회 · <span class="today-label"></span></span></h1>
+      <div class="head-actions">
+        <button class="btn" id="iq-xlsx-in">📄 입고 엑셀 업로드</button>
+        <button class="btn" id="btn-csv-inquiry">⬇ 엑셀 다운로드</button>
+      </div>
+    </div>
+    <div class="kpi-grid" id="iq-kpi"></div>
+    <div class="card filter-bar">
+      <label>입고일 <input type="date" id="iq-from"> ~ <input type="date" id="iq-to"></label>
+      <label>거래처 <select id="iq-sup"><option value="">전체</option></select></label>
+      <label>상태 <select id="iq-state"><option value="">전체</option><option>입고완료</option><option>부분입고</option></select></label>
+      <label>검색 <input type="text" id="iq-search" placeholder="품명, 품번, 비고..."></label>
+      <button class="btn" id="iq-reset">초기화</button>
+    </div>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px">발주내역 중 입고된 기록(입고완료·부분입고)만 표시됩니다. 자재 발주·입고 시트에서 즉시 입고한 건도 여기에 나타납니다.</p>
+      <div class="table-wrap" id="inquiry-table"></div>
+    </div>
+  </section>
+
+  <!-- 자재 일일출고 입력 (ERP 자재기타출고입력 방식) -->
+  <section id="page-issue" class="page" hidden>
+    <div class="page-head">
+      <h1>자재 일일출고 입력 <span class="muted" style="font-size:13px;font-weight:400"><span class="today-label"></span></span></h1>
+      <div class="head-actions">
+        <button class="btn" id="is-daily-in">📅 일별재고 엑셀 반영</button>
+        <button class="btn" id="is-xlsx-in">📄 엑셀로 불러오기</button>
+        <button class="btn" id="is-xlsx-out">⬇ 엑셀 다운로드</button>
+        <button class="btn" id="is-addrow">＋ 행 추가</button>
+        <button class="btn primary" id="is-save">📝 출고 등록</button>
+        <button class="btn primary" id="is-deduct">📤 출고 + 재고 차감</button>
+      </div>
+    </div>
+    <div class="card filter-bar">
+      <label>출고일 <input type="date" id="is-date"></label>
+      <label>출고창고 <input type="text" id="is-wh" value="춘천-원부자재창고" style="min-width:150px"></label>
+      <label>처리부서 <input type="text" id="is-dept" value="구매출고파트" style="width:110px"></label>
+      <label>담당자 <input type="text" id="is-manager" value="차훈" style="width:80px"></label>
+      <label>특이사항 <input type="text" id="is-note" style="min-width:180px"></label>
+    </div>
+    <div class="kpi-grid" id="is-totals"></div>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px">품번 칸에 신규코드나 품목명을 입력하면 품명·단위·현재고가 자동으로 채워지고, 출고구분(생산투입원재료/부재료)은 품번 앞머리로 자동 판정됩니다. [출고 등록]은 기록만 남기고, [출고 + 재고 차감]은 <b>원부자재 현재고에서 수량을 빼서</b> 반영합니다.</p>
+      <div class="table-wrap" id="issue-table"></div>
+    </div>
+  </section>
+
+  <!-- 출고 조회 (ERP 자재기타출고조회 방식) -->
+  <section id="page-issuelist" class="page" hidden>
+    <div class="page-head">
+      <h1>출고 조회 <span class="muted" style="font-size:13px;font-weight:400">일일출고 전표 목록 · <span class="today-label"></span></span></h1>
+      <div class="head-actions">
+        <button class="btn" id="il-xlsx-out">⬇ 엑셀 다운로드</button>
+      </div>
+    </div>
+    <div class="kpi-grid" id="il-kpi"></div>
+    <div class="card filter-bar">
+      <label>출고일 <input type="date" id="il-from"> ~ <input type="date" id="il-to"></label>
+      <label>담당자 <select id="il-manager"><option value="">전체</option></select></label>
+      <label>검색 <input type="text" id="il-search" placeholder="출고번호, 품명, 특이사항..."></label>
+      <button class="btn" id="il-reset">초기화</button>
+    </div>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px">행을 클릭하면 그 출고 전표의 품목 내역(일일출고 현황)이 열립니다.</p>
+      <div class="table-wrap" id="issuelist-table"></div>
+    </div>
+  </section>
+
+  <!-- BOM · 자재명세서 -->
+  <section id="page-bom" class="page" hidden>
+    <div class="page-head">
+      <h1>BOM · 자재명세서 <span class="muted" style="font-size:13px;font-weight:400"><span class="today-label"></span> <span id="bom-updated"></span></span></h1>
+      <div class="head-actions">
+        <div class="sub-toggle" id="bom-region-toggle"><button data-region="내수" class="active">내수</button><button data-region="해외">해외</button><button data-region="반제품">반제품</button></div>
+        <button class="btn" id="btn-xlsx-bom">📄 엑셀로 BOM 등록</button>
+      </div>
+    </div>
+    <div class="kpi-grid" id="bom-kpi"></div>
+    <div class="card filter-bar">
+      <span class="muted" style="font-size:13px">라인</span>
+      <span id="bom-lines"></span>
+      <span class="muted" style="font-size:13px;margin-left:8px">구분</span>
+      <span id="bom-types"></span>
+      <label id="bom-cust-wrap" hidden>업체 <select id="bom-customer"></select></label>
+      <label>제품 <select id="bom-sku" style="max-width:340px"></select></label>
+      <label>검색 <input type="text" id="bom-search" placeholder="코드, 품명..."></label>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h3>계층 BOM</h3>
+        <div class="table-wrap" style="max-height:480px;overflow-y:auto">
+          <table><thead><tr><th>Lv</th><th>코드</th><th>품명</th><th class="num">소요량</th><th>단위</th><th>구분</th></tr></thead><tbody id="bom-tree"></tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <h3>단위 소요 자재 (전개)</h3>
+        <div class="table-wrap" style="max-height:480px;overflow-y:auto">
+          <table><thead><tr><th>코드</th><th>품명</th><th class="num">소요량</th><th>단위</th><th>구분</th></tr></thead><tbody id="bom-flat"></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <p class="muted">BOM 엑셀("BOM일괄업로드" 시트, ItemNo/SubItemNo 양식)을 여러 개 선택하거나 이 화면에 끌어다 놓으면 등록됩니다. 파일명의 CAST/PRECUT/SPLINT로 라인을, KOREA(내수)/EXPORT(해외)/SEMI(반제품) 표기로 구분을 자동 인식하고, 표기가 없으면 위에서 선택된 구분으로 들어갑니다. 같은 구분·라인은 통째로 교체됩니다.</p>
+    </div>
+  </section>
+
+  <!-- 품목 코드 -->
+  <section id="page-codes" class="page" hidden>
+    <div class="page-head">
+      <h1>품목 코드 <span class="muted" style="font-size:13px;font-weight:400"><span class="today-label"></span> <span id="cd-updated"></span></span></h1>
+      <div class="head-actions">
+        <button class="btn" id="cd-xlsx-in">📄 엑셀로 코드 등록</button>
+        <button class="btn" id="cd-xlsx-out">⬇ 엑셀 다운로드</button>
+        <button class="btn primary" id="btn-new-code">＋ 코드 등록</button>
+      </div>
+    </div>
+    <div class="kpi-grid" id="cd-kpi"></div>
+    <div class="card filter-bar">
+      <span class="muted" style="font-size:13px">분류</span>
+      <span id="cd-cats"></span>
+      <label>소분류 <select id="cd-sub"><option value="">전체</option></select></label>
+      <label>검색 <input type="text" id="cd-search" placeholder="품명, 품번, 규격, 영문명..."></label>
+      <label><input type="checkbox" id="cd-active" style="width:auto" checked> 사용 코드만</label>
+      <button class="btn" id="cd-reset">초기화</button>
+    </div>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px">품명/품번/품목자산분류 헤더가 있는 엑셀(ERP 품번 목록)을 올리거나 이 화면에 끌어다 놓으면 반영됩니다. 여러 파일을 한꺼번에 선택할 수 있고, <b>파일에 들어있는 분류만 교체</b>되므로 원부자재 파일과 완제품·반제품 파일을 따로 올려도 서로 지워지지 않습니다. 행을 누르면 수정할 수 있습니다.</p>
+      <div class="table-wrap" id="codes-table"></div>
+    </div>
+  </section>
+
+  <!-- 발주 알림 (재주문 실시간 현황) -->
+  <section id="page-alert" class="page" hidden>
+    <div class="page-head">
+      <h1>발주 알림 <span class="muted" style="font-size:13px;font-weight:400">최근 6개월 입고·사용 기준 · <span class="today-label"></span></span></h1>
+      <div class="head-actions">
+        <button class="btn primary" id="al-po">📝 발주서 작성</button>
+        <button class="btn" id="al-xlsx-out">⬇ 엑셀 다운로드</button>
+      </div>
+    </div>
+    <div class="kpi-grid" id="al-kpi"></div>
+    <div class="card filter-bar">
+      <span class="muted" style="font-size:13px">분류</span>
+      <span id="al-cats"></span>
+      <label>소분류 <select id="al-sub"><option value="">전체</option></select></label>
+      <label>상태 <select id="al-state"><option value="">전체</option><option>긴급 발주</option><option>준비 필요</option><option>여유</option><option>재고 미확인</option></select></label>
+      <label>검색 <input type="text" id="al-search" placeholder="품명, 품번..."></label>
+      <button class="btn" id="al-reset">초기화</button>
+    </div>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px">
+        <b>월평균 입고량</b>은 최근 6개월 입고 기록, <b>월평균 사용량</b>은 일일출고 기록(없으면 입고량으로 추정) 기준입니다.
+        <b>재고 여유</b> = 현재고 ÷ 월평균 사용량 — <span class="badge bad">긴급 발주</span> 1개월 미만 · <span class="badge warn">준비 필요</span> 2개월 미만 · <span class="badge ok">여유</span> 2개월 이상.
+        긴급·준비 품목이 표 맨 위로 정렬됩니다.
+      </p>
+      <div class="table-wrap" id="alert-table"></div>
+    </div>
+  </section>
+
+  <!-- 원부자재 이슈 (AI 뉴스봇 2종 — 매일 08:20 자동 수집·번역) -->
+  <section id="page-rmissues" class="page" hidden>
+    <div class="page-head">
+      <h1>원부자재 이슈 <span class="muted" style="font-size:13px;font-weight:400">AI 뉴스봇이 매일 오전 08:20 국내·해외 이슈를 수집해 한글로 정리 · <span class="today-label"></span></span></h1>
+      <div class="head-actions"><span class="muted" id="rmi-updated" style="font-size:12.5px"></span></div>
+    </div>
+    <div class="rmi-wrap" id="rmi-wrap"></div>
+  </section>
+
+  <!-- 제조원가 (공정분류 엑셀 기반 · 값 수정 시 자동 재계산) -->
+  <section id="page-cost" class="page" hidden>
+    <div class="page-head">
+      <h1>제조원가 <span class="muted" style="font-size:13px;font-weight:400">공정분류(26년) 기준 · 단가를 고치면 원가가 즉시 재계산 · <span class="today-label"></span></span></h1>
+      <div class="head-actions">
+        <button class="btn" id="cost-xlsx-out">⬇ 엑셀 다운로드</button>
+        <button class="btn danger" id="cost-reset">기본값 복원</button>
+      </div>
+    </div>
+    <div class="card filter-bar">
+      <span class="muted" style="font-size:13px">구분</span>
+      <button class="chip" data-cost-tab="resin">🧪 수지</button>
+      <button class="chip" data-cost-tab="cast">🩹 CAST 제조</button>
+      <button class="chip" data-cost-tab="splint">🦴 SPLINT 제조</button>
+      <button class="chip" data-cost-tab="precut">✂️ PRE-CUT 제조</button>
+      <span class="muted" id="cost-note" style="font-size:12px"></span>
+    </div>
+    <div class="kpi-grid" id="cost-kpi"></div>
+    <div id="cost-body"></div>
+  </section>
+
+  <!-- 발주서 작성 (구매 발주서 양식 F-ET-007) -->
+  <section id="page-po" class="page" hidden>
+    <div class="page-head">
+      <h1>발주서 작성 <span class="muted" style="font-size:13px;font-weight:400">구매 발주서 양식(F-ET-007) · <span class="today-label"></span></span></h1>
+      <div class="head-actions">
+        <button class="btn" id="po-new">＋ 새 발주서</button>
+        <button class="btn" id="po-save">💾 저장</button>
+        <button class="btn primary" id="po-xlsx">⬇ 발주서 엑셀 다운로드</button>
+      </div>
+    </div>
+    <div class="po-wrap">
+      <div class="card po-form">
+        <div class="po-sheet-head">
+          <div class="po-title">구&nbsp;&nbsp;매&nbsp;&nbsp;발&nbsp;&nbsp;주&nbsp;&nbsp;서</div>
+          <p class="muted" style="font-size:12px;text-align:center;margin:4px 0 12px">강원도 춘천시 퇴계농공로 84 비엘테크 주식회사 · TEL 033-264-2686 · FAX 033-264-2682</p>
+        </div>
+        <div class="po-fields">
+          <label>수신 (업체명)<input type="text" id="po-to" placeholder="예: ○○산업(주)"></label>
+          <label>발주일자<input type="date" id="po-date"></label>
+          <label>팩스수신번호<input type="text" id="po-fax" placeholder="예: 02-000-0000"></label>
+          <label>담당자<input type="text" id="po-mgr"></label>
+        </div>
+        <div class="table-wrap" id="po-items"></div>
+        <div class="po-foot">
+          <button class="btn small" id="po-add-row">＋ 행 추가</button>
+          <span class="po-total">합계 금액: <b id="po-total">0원</b></span>
+        </div>
+        <label class="po-notes-label">특이사항
+          <textarea id="po-notes" rows="3" spellcheck="false"></textarea>
+        </label>
+      </div>
+      <div class="card po-side">
+        <h3 style="margin-bottom:10px">저장된 발주서</h3>
+        <div id="po-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 구매 분석 대시보드 -->
+  <section id="page-analytics" class="page" hidden>
+    <div class="page-head">
+      <h1>구매 분석 대시보드 <span class="muted" style="font-size:13px;font-weight:400">매입을 월별·거래처별·품목별로 집계, 단가 추이(협상 근거) 확인 · <span class="today-label"></span></span></h1>
+      <div class="head-actions">
+        <button class="btn" id="an-xlsx-out">⬇ 구매 내역 엑셀</button>
+      </div>
+    </div>
+    <div class="card filter-bar">
+      <div class="sub-toggle" id="an-basis"><button data-b="in" class="active">입고일 기준</button><button data-b="order">발주일 기준</button></div>
+      <span id="an-ranges"></span>
+      <label>거래처 <select id="an-sup"><option value="">전체 거래처</option></select></label>
+    </div>
+    <div class="card filter-bar">
+      <span class="muted" style="font-size:13px">분류</span>
+      <span id="an-subs"></span>
+    </div>
+    <div class="kpi-grid" id="an-kpi"></div>
+    <div class="card">
+      <div class="sub-toggle" id="an-tabs" style="margin-bottom:14px">
+        <button data-t="trend" class="active">월별 추이</button>
+        <button data-t="sup">거래처별</button>
+        <button data-t="item">품목별</button>
+        <button data-t="price">단가 추이</button>
+        <button data-t="list">구매 내역</button>
+      </div>
+      <div id="an-body"></div>
+    </div>
+    <div class="brief-section" style="text-align:left">📦 재고 · 출고 현황</div>
+    <div class="grid-2">
+      <div class="card"><h3>원부자재 재고 금액 <span class="muted" style="font-weight:400">구분 × 대분류</span></h3><div id="an-mat"></div></div>
+      <div class="card"><h3>원부자재 재고 금액 TOP 10 품목</h3><div id="an-mat-top"></div></div>
+      <div class="card"><h3>완제품 내수 재고 <span class="muted" style="font-weight:400">제품군별</span></h3><div id="an-fin"></div></div>
+      <div class="card"><h3>완제품 수출 재고 <span class="muted" style="font-weight:400">거래처별 TOP 10</span></h3><div id="an-fin-exp"></div></div>
+      <div class="card"><h3>월별 출고 <span class="muted" style="font-weight:400">최근 12개월 · 전표 기준</span></h3><div id="an-issue-month"></div></div>
+      <div class="card"><h3>출고 품목 TOP 10 <span class="muted" style="font-weight:400">수량 기준</span></h3><div id="an-issue-top"></div></div>
+    </div>
+  </section>
+
+  <!-- 생산 가능 체크 -->
+  <section id="page-check" class="page" hidden>
+    <div class="page-head">
+      <h1>생산 가능 체크 <span class="muted" style="font-size:13px;font-weight:400"><span class="today-label"></span> · 임시 수동 입력 (추후 영업팀 수주내역 연동 예정)</span></h1>
+      <div class="head-actions">
+        <button class="btn primary" id="ck-plan-in">📄 생산계획 엑셀 체크</button>
+        <button class="btn" id="btn-xlsx-pmap">📄 매핑 엑셀 갱신</button>
+        <button class="btn primary" id="btn-po-check">📝 부족 자재 발주서</button>
+        <button class="btn" id="btn-csv-check">⬇ 부족 자재 CSV</button>
+        <button class="btn danger" id="check-clear">전체 비우기</button>
+      </div>
+    </div>
+    <div id="check-verdict"></div>
+    <div class="kpi-grid" id="check-kpi"></div>
+    <div class="card filter-bar">
+      <label>구분 <select id="ck-region"><option>내수</option><option>해외</option><option>반제품</option></select></label>
+      <label>검색 <input type="text" id="ck-search" placeholder="제품코드, 품명..."></label>
+      <span class="muted" style="font-size:13px">라인</span>
+      <span id="ck-lines"></span>
+      <span class="muted" style="font-size:13px;margin-left:8px">품목</span>
+      <span id="ck-types"></span>
+      <label>제품 <select id="ck-sku" style="max-width:320px"></select></label>
+      <label>수량 <input type="text" id="ck-qty" inputmode="decimal" style="width:90px" placeholder="1,000"></label>
+      <button class="btn primary" id="ck-add">＋ 추가</button>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h3>체크 목록 <span class="muted" style="font-weight:400" id="ck-src">(수동 입력)</span></h3>
+        <div class="table-wrap" id="check-items"></div>
+      </div>
+      <div class="card">
+        <h3>소요 자재 대조 <span class="muted" style="font-weight:400">BOM 전개 × 원부자재 현재고</span></h3>
+        <div class="table-wrap" style="max-height:520px;overflow-y:auto" id="check-result"></div>
+      </div>
+    </div>
+    <div class="card">
+      <p class="muted">소요량은 BOM을 원부자재 단위까지 전개해 계산하고, 재고는 원부자재 재고현황의 <b>신규코드</b>와 자재코드를 대조합니다 (조사자 무관 전체 재고 기준). 신규코드가 등록되지 않은 자재는 "재고 미등록"으로 표시됩니다.<br>
+      <span id="pmap-info"></span> — 검색창에 영업팀의 <b>외부 품명(발주서 코드), 내부 품명, 업체명, 브랜드</b>를 입력해도 제품이 찾아집니다. [📄 매핑 엑셀 갱신]으로 해외 마스터/국내 매핑 파일을 다시 올릴 수 있습니다.</p>
+    </div>
+  </section>
+</main>
+
+<!-- 원부자재 등록/수정 모달 -->
+<div class="modal-back" id="material-modal" hidden>
+  <div class="modal" style="max-width:640px">
+    <div class="modal-head">
+      <h2 id="material-modal-title">자재 등록</h2>
+      <button class="btn icon" id="material-modal-close">✕</button>
+    </div>
+    <form id="material-form">
+      <div class="form-grid">
+        <label>구분<select name="division"><option>부목</option><option>하이드로겔</option></select></label>
+        <label>품목명 *<input type="text" name="name" required></label>
+        <label>신규이름<input type="text" name="newName"></label>
+        <label>신규코드<input type="text" name="newCode"></label>
+        <label>단위<input type="text" name="unit" placeholder="EA, KG, roll..."></label>
+        <label>당월 재고<input type="number" step="0.01" name="stock"></label>
+        <label>당월 단가<input type="number" step="0.01" name="price"></label>
+        <label>당월 금액 (비우면 자동)<input type="number" step="0.01" name="amount"></label>
+        <label>대분류<select name="category"><option value=""></option><option>원재료</option><option>부재료</option><option>반제품</option><option>완제품</option></select></label>
+        <label>장소<input type="text" name="place"></label>
+        <label>조사자<input type="text" name="inspector" value="차훈"></label>
+        <label class="wide">비고<input type="text" name="note"></label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn danger" id="material-delete" hidden>삭제</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" id="material-cancel">취소</button>
+        <button type="submit" class="btn primary">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 완제품 재고 등록/수정 모달 -->
+<div class="modal-back" id="fin-modal" hidden>
+  <div class="modal" style="max-width:640px">
+    <div class="modal-head">
+      <h2 id="fin-modal-title">완제품 재고 등록</h2>
+      <button class="btn icon" id="fin-modal-close">✕</button>
+    </div>
+    <form id="fin-form">
+      <div class="form-grid">
+        <label>구분 *<select name="scope" required><option value="내수">내수</option><option value="수출">수출</option></select></label>
+        <label>제품군<select name="group"><option value=""></option><option>Cast</option><option>Pre-Cut</option><option>Splint</option><option>Pre-Mold</option><option>NEAL COVER</option><option>Under-Pad</option></select></label>
+        <label>브랜드<input type="text" name="brand"></label>
+        <label>Type<input type="text" name="type"></label>
+        <label>기재<input type="text" name="base"></label>
+        <label>Color<input type="text" name="color"></label>
+        <label>제품코드 *<input type="text" name="code" required></label>
+        <label>현재고<input type="number" step="0.01" name="qty"></label>
+        <label>안전재고 (내수)<input type="number" step="0.01" name="safety"></label>
+        <label>해외거래처 (수출)<input type="text" name="supplier"></label>
+        <label class="wide">차수 / 비고<input type="text" name="lot"></label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn danger" id="fin-delete" hidden>삭제</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" id="fin-cancel">취소</button>
+        <button type="submit" class="btn primary">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 발주 등록/수정 모달 -->
+<div class="modal-back" id="order-modal" hidden>
+  <div class="modal" style="max-width:640px">
+    <div class="modal-head">
+      <h2 id="order-modal-title">발주 등록</h2>
+      <button class="btn icon" id="order-modal-close">✕</button>
+    </div>
+    <form id="order-form">
+      <div class="form-grid">
+        <label>발주일 *<input type="date" name="date" required></label>
+        <label>거래처 *<input type="text" name="supplier" required></label>
+        <label>품명 *<input type="text" name="item" required></label>
+        <label>규격<input type="text" name="spec"></label>
+        <label>단위<input type="text" name="unit" placeholder="EA, kg, roll..."></label>
+        <label>수량<input type="number" step="0.01" name="qty"></label>
+        <label>단가<input type="number" step="0.01" name="price"></label>
+        <label>금액 (비우면 자동)<input type="number" step="1" name="amount"></label>
+        <label>납기<input type="date" name="due"></label>
+        <label>입고일<input type="date" name="inDate"></label>
+        <label>입고수량<input type="number" step="0.01" name="inQty"></label>
+        <label>입고상태<select name="status"><option>미입고</option><option>부분입고</option><option>입고완료</option></select></label>
+        <label class="wide">비고<input type="text" name="note"></label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn danger" id="order-delete" hidden>삭제</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" id="order-cancel">취소</button>
+        <button type="submit" class="btn primary">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 구매 어시스턴트 (챗봇) -->
+<button id="ai-fab" class="ai-fab" title="구매 어시스턴트">💬<span id="ai-badge" class="ai-badge" hidden></span></button>
+<div id="ai-dock" class="ai-dock" hidden>
+  <div class="ai-resize" id="ai-resize" title="끌어서 크기 조절"></div>
+  <div class="ai-head">
+    <span>🤖 구매 어시스턴트 <span id="ai-model-label" class="ai-model-label"></span></span>
+    <span class="spacer"></span>
+    <button class="btn icon" id="ai-key-btn" title="AI 연결 설정 (OpenAI API 키)">⚙</button>
+    <button class="btn icon" id="ai-home" title="처음 화면으로">🏠</button>
+    <button class="btn icon" id="ai-min" title="접기/펴기">—</button>
+    <button class="btn icon" id="ai-max" title="크게/원래대로">⛶</button>
+    <button class="btn icon" id="ai-close" title="닫기">✕</button>
+  </div>
+  <div class="ai-msgs" id="ai-msgs"></div>
+  <div class="ai-quick">
+    <button class="chip" data-ai-q="긴급 발주">🔴 긴급 발주</button>
+    <button class="chip" data-ai-q="준비 필요">🟡 준비 필요</button>
+    <button class="chip" data-ai-q="미입고">📦 미입고</button>
+    <button class="chip" data-ai-q="도움말">❓ 도움말</button>
+  </div>
+  <div class="ai-attach-bar" id="ai-attach-bar" hidden>
+    <span id="ai-attach-name"></span>
+    <button class="btn icon" id="ai-attach-del" title="첨부 제거">✕</button>
+  </div>
+  <div class="ai-input">
+    <button class="btn icon" id="ai-attach-btn" title="이미지·PDF 첨부 (영수증, 거래명세서 등)">📎</button>
+    <input type="file" id="ai-file" accept="image/*,.pdf" hidden>
+    <input type="text" id="ai-text" placeholder="예: 재고 코어 / 긴급 발주 / 📎영수증 첨부">
+    <button class="btn primary" id="ai-send">전송</button>
+  </div>
+</div>
+
+<!-- 품목 코드 등록/수정 모달 -->
+<div class="modal-back" id="code-modal" hidden>
+  <div class="modal" style="max-width:640px">
+    <div class="modal-head">
+      <h2 id="code-modal-title">코드 등록</h2>
+      <button class="btn icon" id="code-modal-close">✕</button>
+    </div>
+    <form id="code-form">
+      <div class="form-grid">
+        <label>품명 *<input type="text" name="name" required></label>
+        <label>품번 *<input type="text" name="code" required></label>
+        <label>규격<input type="text" name="spec"></label>
+        <label>영문명<input type="text" name="engName"></label>
+        <label>분류 *<select name="category" required><option>원자재</option><option>부자재</option><option>반제품</option><option>완제품</option><option>기타</option></select></label>
+        <label>기준단위<input type="text" name="unit" placeholder="EA, KG, M..."></label>
+        <label>품목소분류<input type="text" name="subclass" placeholder="반제품-수출-CAST..."></label>
+        <label>품목상태<select name="status"><option>사용</option><option>미사용</option></select></label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn danger" id="code-delete" hidden>삭제</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" id="code-cancel">취소</button>
+        <button type="submit" class="btn primary">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 출고 전표 상세 (일일출고 현황) 모달 -->
+<div class="modal-back" id="issue-view-modal" hidden>
+  <div class="modal" style="max-width:860px">
+    <div class="modal-head">
+      <h2 id="iv-title">일일출고 현황</h2>
+      <button class="btn icon" id="iv-close">✕</button>
+    </div>
+    <div id="iv-head" class="muted" style="margin-bottom:12px;font-size:13px;line-height:1.9"></div>
+    <div class="table-wrap" style="max-height:440px;overflow-y:auto" id="iv-lines"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn danger" id="iv-delete">전표 삭제</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="iv-close2">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="env.js"></script>
+<script src="company-info.js?v=20261021"></script>
+<script src="firebase-config.js?v=20260911b"></script>
+<script src="seed-data.js?v=20260911b"></script>
+<script src="cost-seed.js?v=20260922"></script>
+<script src="app.js?v=20261021a"></script>
+<script src="idcodes.js?v=20261006"></script>
+<script src="sync-engine.js?v=20261006b"></script>
+<script src="cloud-sync.js?v=20261006b"></script>
+</body>
+</html>

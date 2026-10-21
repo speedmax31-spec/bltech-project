@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "jds-local",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "serve", "-l", "5599", "bltech-jds/public"],
+      "port": 5599
+    },
+    {
+      "name": "purchase-local",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "serve", "-l", "5600", "bltech-purchase"],
+      "port": 5600
+    }
+  ]
+}

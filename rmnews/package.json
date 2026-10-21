@@ -1,0 +1,17 @@
+{
+  "name": "rmnews",
+  "version": "1.0.0",
+  "description": "",
+  "main": "gpt-news.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "ai": "^7.0.107",
+    "firebase-admin": "^14.5.0"
+  }
+}

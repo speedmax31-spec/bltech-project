@@ -1,0 +1,19 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "*.bat", "firestore.rules", "env.js", "docs/**"],
+    "headers": [
+      {
+        "source": "**/*.@(html|js|css)",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      },
+      {
+        "source": "/",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}

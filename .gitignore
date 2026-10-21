@@ -1,0 +1,33 @@
+# ── 비밀 정보 (API 키·서비스 계정 키) ──
+bltech-purchase/env.js
+bltech-purchase/firebase-config.js
+bltech-purchase/company-info.js
+*.env
+.env*
+*adminsdk*.json
+*service-account*.json
+
+# ── 회사 내부 데이터 ──
+bltech-purchase/seed-data.js
+bltech-purchase/cost-seed.js
+bltech-purchase/po-template.xlsx
+firestore-export/
+rmnews/backup/
+rmnews/days/
+rmnews/today.json
+rmnews/import-report-*.json
+*.xlsx
+*.xls
+*.csv
+*.pptx
+
+# ── 다른 프로젝트 (bltech-jds, 별도 관리) ──
+bltech-jds/
+
+# ── 빌드·캐시·로컬 설정 ──
+node_modules/
+.firebase/
+.claude/settings.local.json
+*.log
+Thumbs.db
+desktop.ini
